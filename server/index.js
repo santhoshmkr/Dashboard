@@ -3,9 +3,9 @@ const cors = require('cors')
 const env = require('dotenv')
 const mongoose = require('mongoose')
 const connection = require('./db')
-const multer = require('multer')
 const UserModel = require('./model/User')
 const ProductModel = require('./model/Product')
+const CategoryModel = require('./model/Catogory')
 
 env.config();
 
@@ -14,20 +14,6 @@ app.use(cors());
 app.use(express.json());
 
 
-// Set storage engine
-const storage = multer.diskStorage({
-    destination: function (req, file, cb)  {
-        cb(null, '../client/src/images'); // Ensure this path exists
-    },
-    filename: function (req, file, cb)  {
-        cb(null, Date.now() + '--' + file.originalname);
-    }
-});
-
-// Initialize upload variable
-const upload = multer({ storage: storage });
-
-// Middleware to parse JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -51,6 +37,106 @@ app.post('/register', async (req, res) => {
     }
 })
 
+// login
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await UserModel.findOne({ email: email, password: password });
+        if (user) {
+            res.send({ message: 'Login Successful', user: user });
+        } else {
+            res.send({ message: 'Login Failed' });
+        }
+    } catch (error) {
+        res.send({ message: 'Login Failed' });
+    }
+})
+
+// add category
+app.post('/add-category', async(req,res)=>{
+    try{
+        const Category= new CategoryModel({
+            category_name:req.body.category_name,
+            category_image:req.body.category_image,
+            category_Description:req.body.category_Description
+        })
+        await Category.save();
+        res.status(200).send({
+            message:'new category added',
+            data: Category
+        })
+    }catch (error) {
+        console.error('Error during category creation:', error);
+        res.status(500).send({ message: 'category creation failed', error: error.message });
+    }
+})
+
+app.get('/get-categories', async (req, res) => {
+    try {
+      const categories = await CategoryModel.find().exec();
+      res.send(categories);
+    } catch (error) {
+      console.error('Unable to get categories:', error);
+      res.status(500).send({
+        message: 'Unable to get categories:',
+        error: error.message,
+        error_code: error.code,
+      });
+    }
+  });
+
+// Product Upload
+
+app.post('/upload', async (req, res) => {
+    try {
+        const product = new ProductModel({
+            name: req.body.name, 
+            description: req.body.description,
+            category: req.body.category, 
+            image: req.body.image,
+            variants: req.body.variants ? JSON.parse(req.body.variants) : [], 
+            inventory: {
+                stock: req.body.inventory.stock, 
+                sold: req.body.inventory.sold 
+            },
+            taxDetails: {
+                taxRate: req.body.taxDetails.taxRate, 
+            },
+            status: req.body.status , 
+            shippingDetails: {
+                weight: req.body.shippingDetails.weight, 
+                dimensions: {
+                    height: req.body.shippingDetails.dimensions.height, 
+                    width: req.body.shippingDetails.dimensions.width, 
+                    length: req.body.shippingDetails.dimensions.length, 
+                },
+            },
+            returnPolicy: req.body.returnPolicy || 'Returnable' 
+        });
+
+        await product.save();
+        res.status(201).send({
+            message: 'Product created successfully',
+            data: product 
+        });
+    } catch (error) {
+        console.error('Error during product creation:', error);
+        res.status(500).send({ message: 'Product creation failed', error: error.message });
+    }
+});
+
+// product list
+app.get('/products', async (req, res) => {
+    try {
+        const products = await ProductModel.find();
+        res.send(products);
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).send({ message: 'Failed to fetch products', error: error.message });
+    }
+});
+
+
 // get product
 app.get('/update-Product/:id', (req, res) => {
     const id = req.params.id;  
@@ -69,13 +155,13 @@ app.get('/update-Product/:id', (req, res) => {
 
 
   // update product
-  app.put("/update-Product/:id", upload.single('image'), async (req, res) => {
+  app.put("/update-Product/:id",  async (req, res) => {
     const id = req.params.id;
 
     try {
-        // Check for required fields
-        if (!req.body.name || !req.body.category) {
-            return res.status(400).send({ message: 'Name and category are required.' });
+       
+        if (!req.body.name ) {
+            return res.status(400).send({ message: 'Name  are required.' });
         }
 
         // Find the product by ID
@@ -94,7 +180,7 @@ app.get('/update-Product/:id', (req, res) => {
                 taxDetails: {
                     taxRate: req.body.taxRate ? parseFloat(req.body.taxRate) : 0.0,
                 },
-                status: req.body.status || 'Active',
+                status: req.body.status,
                 shippingDetails: {
                     weight: req.body.weight ? parseFloat(req.body.weight) : 0.0,
                     dimensions: {
@@ -137,76 +223,6 @@ app.get('/update-Product/:id', (req, res) => {
     }
   });
 
-// login
-app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        const user = await UserModel.findOne({ email: email, password: password });
-        if (user) {
-            res.send({ message: 'Login Successful', user: user });
-        } else {
-            res.send({ message: 'Login Failed' });
-        }
-    } catch (error) {
-        res.send({ message: 'Login Failed' });
-    }
-})
-
-
-// Product Upload
-
-app.post('/upload', upload.single('image'), async (req, res) => {
-    try {
-        if (!req.body.name || !req.body.category) {
-            return res.status(400).send({ message: 'Name and category are required.' });
-        }
-
-        const product = new ProductModel({
-            name: req.body.name, 
-            description: req.body.description,
-            category: req.body.category, 
-            image: req.file ? req.file.filename : '',
-            variants: req.body.variants ? JSON.parse(req.body.variants) : [], 
-            inventory: {
-                stock: req.body.stock ? parseInt(req.body.stock) : 0, 
-                sold: req.body.sold ? parseInt(req.body.sold) : 0 
-            },
-            taxDetails: {
-                taxRate: req.body.taxRate ? parseFloat(req.body.taxRate) : 0.0, 
-            },
-            status: req.body.status || 'Active', 
-            shippingDetails: {
-                weight: req.body.weight ? parseFloat(req.body.weight) : 0.0, 
-                dimensions: {
-                    height: req.body.height ? parseFloat(req.body.height) : 0.0, 
-                    width: req.body.width ? parseFloat(req.body.width) : 0.0, 
-                    length: req.body.length ? parseFloat(req.body.length) : 0.0, 
-                },
-            },
-            returnPolicy: req.body.returnPolicy || 'Returnable' 
-        });
-
-        
-        await product.save();
-        res.status(201).send({ message: 'Product created successfully' });
-    } catch (error) {
-        
-        console.error('Error during product creation:', error);
-        res.status(500).send({ message: 'Product creation failed', error: error.message });
-    }
-});
-
-// product list
-app.get('/products', async (req, res) => {
-    try {
-        const products = await ProductModel.find();
-        res.send(products);
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        res.status(500).send({ message: 'Failed to fetch products', error: error.message });
-    }
-});
-
 // search
 app.get('/Search', async (req, res) => {
     const { q } = req.query;
@@ -219,21 +235,6 @@ app.get('/Search', async (req, res) => {
         }
     })
 });
-
-// sort
-app.get('/sort', async (req, res) => {
-    const { q } = req.query;
-    ProductModel.find({ category: { $regex: q, $options: 'i' } })
-    .then((products) => {
-        if (products.length > 0) {
-            res.json(products);
-        } else {
-            res.status(404).json({ message: 'No products found' });
-        }
-    })
-});
-
- 
 
 
 

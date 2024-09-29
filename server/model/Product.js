@@ -9,11 +9,11 @@ const productSchema = new mongoose.Schema({
     type: String,
   },
   category: {
-    type: String,
-    required: true,
+    type: String
+    // required: true,
   },
   image: {
-    type: String,
+    type: String
   },
   variants: [
     {
@@ -24,8 +24,7 @@ const productSchema = new mongoose.Schema({
   ],
   inventory: {
     stock: {
-      type: Number,
-      required: true,
+      type: Number
     },
     sold: {
       type: Number,
@@ -36,9 +35,7 @@ const productSchema = new mongoose.Schema({
     taxRate: Number,
   },
   status: {
-    type: String,
-    enum: ['Active', 'Inactive'],
-    default: 'Active',
+    type: String
   },
   shippingDetails: {
     weight: {
