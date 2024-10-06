@@ -48,28 +48,7 @@ const UpdateProduct = ({ categories = [] }) => {
     fetchProduct();
   },[]);
 
-  const ImageUpload = async (e) => {
-    console.log("uploading");
-    const files = e.target.files;
-    const data = new FormData();
-    data.append("file", files[0]);
-    data.append("upload_preset", "rgpqdzui");
-    setImage(files[0]);
-    setUploading(true);
-    try {
-      const response = await axios.post(
-        `https://api.cloudinary.com/v1_1/dija60v2h/image/upload`,
-        data
-      );
-      setImageUrl(response.data.secure_url);
-      setProductData({ ...productData, image: response.data.secure_url }); 
-      setUploading(false);
-      console.log(imageUrl);
-    } catch (err) {
-      console.log(err);
-      setUploading(false);
-    }
-  };
+  
 
   const handleAddField = (e) => {
     e.preventDefault();
@@ -94,12 +73,39 @@ const UpdateProduct = ({ categories = [] }) => {
     }
   };
 
+  const ImageUpdate = async (e) => {
+    console.log("updating image");
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const data = new FormData();
+      data.append("file", files[0]);
+      data.append("upload_preset", "rgpqdzui");
+      setImage(files[0]);
+      setUploading(true);
   
+      try {
+        const response = await axios.post(
+          `https://api.cloudinary.com/v1_1/dija60v2h/image/upload`,
+          data
+        );
+  
+        const updatedImageUrl = response.data.secure_url;
+  
+        setImageUrl(updatedImageUrl);  
+        setUploading(false);
+        console.log("Image updated:", updatedImageUrl);
+      } catch (err) {
+        console.error("Error updating image:", err);
+        setUploading(false);
+        setImageUrl(""); 
+      }
+    }
+  };
   
   const handleUpdate = async (e) => {
     e.preventDefault();
   
-    const { name, description, category, image, inventory, taxDetails, status, shippingDetails, returnPolicy } = productData;
+    const { name, description, category, inventory, taxDetails, status, shippingDetails, returnPolicy } = productData;
   
     if (!name ) {
       console.error('Name  are required.');
@@ -110,7 +116,7 @@ const UpdateProduct = ({ categories = [] }) => {
       name,
       description,
       category,
-      image,
+      image: imageUrl, 
       variants: JSON.stringify(fields),
       inventory: { ...inventory },
       taxDetails: { ...taxDetails },
@@ -131,7 +137,6 @@ const UpdateProduct = ({ categories = [] }) => {
       console.error('Error Updating productData:', err);
     }
   };
-  
 
   return (
     <div className="container w-[80%] px-10 py-6 ml-64 mt-16">
@@ -256,7 +261,7 @@ const UpdateProduct = ({ categories = [] }) => {
                     accept="image/*"
                     className="hidden"
                     id="image-upload"
-                    onChange={(e) => ImageUpload(e)}
+                    onChange={(e) => ImageUpdate(e)}
                     
                   />
                   <label htmlFor="image-upload" className="cursor-pointer">
@@ -265,7 +270,7 @@ const UpdateProduct = ({ categories = [] }) => {
                       alt="Placeholder for media upload"
                       className="mx-auto mb-4"
                     />
-                    <p>Click here to upload Image</p>
+                    <p>{uploading ? "Uploading..." : "Click here to upload Image"}</p>
                   </label>
                 </div>
               </div>

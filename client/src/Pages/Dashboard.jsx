@@ -37,13 +37,17 @@ const Dashboard = () => {
 
 
   const handleDelete = async (id) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this item?');
+    if (!confirmDelete) return;
+  
     try {
       await axios.delete(`http://localhost:6060/delete-product/${id}`);
-      setProducts(products.filter((product) => product._id !== id));
+      setProducts((prevProducts) => prevProducts.filter((product) => product._id !== id));
     } catch (error) {
-      console.error(error);
+      console.error('Error deleting product:', error);
     }
   };
+  
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
